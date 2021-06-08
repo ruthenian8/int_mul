@@ -1,9 +1,10 @@
 ---
 title: "MUL in field interviews"
 author: "Daniil Ignatiev"
-date: '4 РёСЋРЅСЏ 2021 Рі '
+date: '4 June 2021'
 output:
-  pdf_document: default
+  pdf_document: 
+    latex_engine: xelatex
   html_document: default
 ---
 
@@ -24,7 +25,7 @@ The paper explores several linguistic questions, making use of the RSUH folklore
 
 ### Introduction
 Mean utterance length (MLU) and mean sentence length (MSU) are both traditional variables that have been excessively studied in relation to sociolinguistic factors. What makes a study of such kind especially interesting is the stereotype than women generally talk more than men do. This motivated a lot of researchers to address the matter on the material of different languages (see Daniel & Zelenkov 2012, Tannen 1990).
-Despite the fact, that the problem is generally well-studied, we still raise it thanks to the specific properties of our corpus that offer a new perspective on the old research object. If we compare our study to the one M. A. Daniel performed on the data from the Russian National Corpus, we can see one important advantage of our dataset, namely the pragmatic uniformity. The data available in the Oral Subcorpus of the RNC comes from very different sources, including purely artificial ones, like films or plays, and therefore this data unifies very different examples of speech in terms of pragmatics, which a researcher can hardly account for. Our dataset on the other hand consists of transcribed field recordings and interviews that more or less belong to a same type of communicative situations. This fact makes the statistical hypotheses we intend to test a lot more convincing.
+Despite the fact, that the problem is generally well-studied, we still raise it thanks to the specific properties of our corpus that offer a new perspective on the old research object. If we compare our study to the one M. A. Daniel performed on the data from the Russian National Corpus, we can see one important advantage of our dataset, namely the pragmatic uniformity. The data available in the Oral Sub-corpus of the RNC comes from very different sources, including purely artificial ones, like films or plays, and therefore this data unifies very different examples of speech in terms of pragmatics, which a researcher can hardly account for. Our dataset on the other hand consists of transcribed field recordings and interviews that more or less belong to a same type of communicative situations. This fact makes the statistical hypotheses we intend to test a lot more convincing.
 
 ### Preparation
 The dataset was previously extracted from the RSUH archive and prepared using Python scripts.
@@ -93,7 +94,7 @@ dataset %>%
   stat_boxplot(geom = "errorbar", width = 0.5) +
   geom_boxplot(notch = TRUE) + 
   stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
-  labs(title = "MUL for gender groups", y = "Mean utterance len.") + 
+  labs(title = "MUL by genders", y = "Mean utterance len.") + 
   theme_economist(base_size = 55) + 
   theme(axis.text.x = element_text(vjust = 6),
         axis.text.y = element_text(hjust = 2)) +
@@ -104,7 +105,7 @@ dataset %>%
   stat_boxplot(geom = "errorbar", width = 0.5) +
   geom_boxplot(notch = TRUE) + 
   stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
-  labs(title = "MSL for gender groups", y = "Mean sent. len.") + 
+  labs(title = "MSL by genders", y = "Mean sent. len.") + 
   theme_economist(base_size = 55) + 
   theme(axis.text.x = element_text(vjust = 6),
         axis.text.y = element_text(hjust = 2)) + 
@@ -136,7 +137,7 @@ dataset %>%
 
 Our interpretation of the tests above depends on what alpha we choose for testing the hypotheses. As long as we pick an alpha of 0.001, like M. A. Daniel did in his research, the difference of means in both of the tests has no statistical significance. However, if we choose an alpha of 0.05 that is generally acknowledged as sufficient for the social sciences, the results appear to be significant. Whichever fashion we go for, the r-statistic still implies that the effect size is quite small in both of the tests. This fact allows us to conclude that according to the data that we have, the common assumption that women speak more is not supported statistically. Having determined this conclusion, we can now try to split the groups into smaller fractions, so as to see, if any patterns can be spotted in this manner.
 
-Although we stated at the beginning, that the corpus that we are working with is generally uniform in terms of pragmatics, speakers' perception of the communicative situation can still differ, depending on the number of interviewers they converse with. As long as only one interviewer participates in the dialogue, the situation can possibly be viewed as a private talk, which does not force the informant to change his everyday speaking patterns. Meanwhile a conversation with multiple interviewers (normally from 2 to 4) is more likely to be percieved as a formal situation that requires the informant to make respective adjustments to their manner of speaking. Therefore it would be interesting to compare the corresponding corpus entries. 
+Although we stated at the beginning, that the corpus that we are working with is generally uniform in terms of pragmatics, speakers' perception of the communicative situation can still differ, depending on the number of interviewers they converse with. As long as only one interviewer participates in the dialogue, the situation can possibly be viewed as a private talk, which does not force the informant to change his everyday speaking patterns. Meanwhile a conversation with multiple interviewers (normally from 2 to 4) is more likely to be perceived as a formal situation that requires the informant to make respective adjustments to their manner of speaking. Therefore it would be interesting to compare the corresponding corpus entries. 
 Firstly, we can compare the subgroups determined by the exact number of interviewers.
 
 ```{r echo=FALSE}
@@ -361,10 +362,15 @@ summary(aov_model4 <- aov(mean_sl ~ inf2group, grouped))
 TukeyHSD(aov_model4)
 ```
 
-Once again, the difference seems to be to small to be considered. Although the ANOVA shows that not all groups have a similar mean MSL, the post-hoc test proves that the differences are not significant. However, we can state that the difference between the female-to-female group and two other groups, namely male-to-female and male-to-male are on the verge of statistical significance. Of course, the latter fact does not allow us to make any strict conclusions.
+Once again, the difference seems to be too small to be considered. Although the ANOVA shows that not all groups have a similar mean MSL, the post-hoc test proves that the differences are not significant. However, we can state that the difference between the female-to-female group and two other groups, namely male-to-female and male-to-male, are on the verge of statistical significance. Of course, the latter fact does not allow us to make any strict conclusions.
 
 ### Discussion
 
- * It may seem from the experiments above that we failed to achieve any significant result, as we did not find any notable tendencies. However, the main goal of the study was not to confirm, but to test a common assumption about the communicative behaviour of certain genders. In this sense the experiment can be called a success, as our study, made on a pragmatically uniform corpus, proves that the gender-based differences are not statistically significant.
+ * It may seem from the experiments above that we failed to achieve any significant result, as we did not find any notable tendencies. However, the main goal of the study was not to confirm, but to test a common assumption about the communicative behavior of certain genders. In this sense the experiment can be called a success, as our study, made on a pragmatically uniform corpus, proves that the gender-based differences are not statistically significant.
  * The study also showed some disadvantages of the corpus, like the lack of an age variable or like the lack of balance in terms of speaker genders. These weak points can potentially be taken into account, when collecting new data.
  * As for the interviewer team composition in terms of gender, the study shows that the effect that the corresponding variables make is hardly noticeable - at least as far as the mean utterance length and the mean sentence length are concerned. We would need some markup for speaker's age and for the age of the interviewers to study this question in detail.
+
+### References
+
+ * Daniel, M. A., Zelenkov, Yu. G. (2012). NRC as an intrument for sociolinguistic research. Episode IV: speaker gender and utterance length. In: Computational linguistics and intellectual technologies. Proceedings of "Dialogue-2012". 11. Moscow: RSUH. pp. 112-121.
+ * Tannen, Deborah (1990). You just don’t understand. Women and men in conversation. NY: Ballantine Books

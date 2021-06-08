@@ -3,8 +3,8 @@ title: "MUL in field interviews"
 author: "Daniil Ignatiev"
 date: '4 РёСЋРЅСЏ 2021 Рі '
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}

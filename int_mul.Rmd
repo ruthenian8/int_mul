@@ -1,0 +1,370 @@
+---
+title: "MUL in field interviews"
+author: "Daniil Ignatiev"
+date: '4 РёСЋРЅСЏ 2021 Рі '
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(rstatix)
+library(grid)
+library(gridExtra)
+```
+## MUL & MSL in field interviews
+### Abstract
+The paper explores several linguistic questions, making use of the RSUH folklore archive. The first of them is how traditional sociolinguistic variables, namely the mean utterance length and the mean sentence, length relate to the gender of the speaker and to the gender of the addressee. The second question is how well we can study the former matter, given the current structure of the corpus and what the corpus currently lacks in this respect. Thirdly, we provide some conclusions on how collectors' genders could influence the quantity of the collected material.
+
+### Introduction
+Mean utterance length (MLU) and mean sentence length (MSU) are both traditional variables that have been excessively studied in relation to sociolinguistic factors. What makes a study of such kind especially interesting is the stereotype than women generally talk more than men do. This motivated a lot of researchers to address the matter on the material of different languages (see Daniel & Zelenkov 2012, Tannen 1990).
+Despite the fact, that the problem is generally well-studied, we still raise it thanks to the specific properties of our corpus that offer a new perspective on the old research object. If we compare our study to the one M. A. Daniel performed on the data from the Russian National Corpus, we can see one important advantage of our dataset, namely the pragmatic uniformity. The data available in the Oral Subcorpus of the RNC comes from very different sources, including purely artificial ones, like films or plays, and therefore this data unifies very different examples of speech in terms of pragmatics, which a researcher can hardly account for. Our dataset on the other hand consists of transcribed field recordings and interviews that more or less belong to a same type of communicative situations. This fact makes the statistical hypotheses we intend to test a lot more convincing.
+
+### Preparation
+The dataset was previously extracted from the RSUH archive and prepared using Python scripts.
+The original archive consists of some 24000 entries, each of which contains one or several answers to interviewers' questions by different speakers. All the questions or interviewers' remarks are enclosed in square brackets, which makes it easy to filter them by using regular expressions. When calculating the mean utterance length, we considered the span between two questions or remarks a single utterance and thus the mean number of tokens inside those spans was viewed as the MLU for each entry. The mean sentence length on the other hand was calculated after all the interviewers' utterances were excluded.
+```{r results='hide'}
+dataset <- read.csv("https://raw.githubusercontent.com/ruthenian8/int_mul/master/uq_infs_genders.csv")
+```
+```{r echo=FALSE}
+dataset %>% 
+  ggplot(aes(mean_ul)) + 
+  geom_histogram(binwidth = 3)+
+  labs(x="Number of tokens",
+     y="Count",
+     title="Mean utterance length")+
+  geom_vline(aes(xintercept = median(mean_ul)),col='red',size=2) +
+  theme_minimal()
+```
+```{r echo=FALSE}
+dataset %>% 
+  ggplot(aes(mean_sl)) + 
+  geom_histogram(binwidth = 3)+
+  labs(x="Number of tokens",
+     y="Count",
+     title="Mean sentence length")+
+  geom_vline(aes(xintercept = median(mean_sl)),col='red',size=2) +
+  theme_minimal()
+```
+
+In the histograms above the red line shows the median value.
+Filtering the dataset, we exclude entries in which the mean sentence length exceeds 40 or the mean utterance length exceeds 120, as those can be viewed as outliers that might affect the comparison results. This step will also make both distributions more or less symmetrical around the median, which in its turn will simplify the upcoming tests.
+
+```{r results='hide'}
+dataset <- dataset %>%
+  filter(inf_gender1 == "f" | inf_gender1 == "m") %>% 
+  filter(mean_sl <= 40 & mean_ul < 120)
+```
+
+The three factors that generally need to be taken care of when comparing parameters like the MUL are independence of observations, normal distribution of data and homosedasticity (equivalence of variance). The first of this constraints was taken care of, when we selected our examples from the archive, as we included only one randomly selected entry from each of the speakers. This means that none of the examples in the dataset was influenced by another. The two other factors are commonly viewed as less restrictive for several reasons.
+
+ * Firstly, since the impact that a non-normal distribution of data would make on a t-test can easily be avoided by resorting to Wilcoxon's test instead. This possibility greatly alleviates the construction of our dataset, since the graph clearly suggests that the distribution of data is quite skewed and even resembles Poisson's distribution (see figures below).
+ * Secondly, while we still intend to check the homosedasticity of the data, using the Wilcoxon's test or the version of the t-test, known as Welch's independent sample t-test reduces the influence of this factor.  
+These two assumptions lead us to the conclusion that the current state of the dataset is acceptable for comparing mean values inside any groups of choice.
+
+Another assumption that should be accounted for is that the distributions should be symmetrical around the median for successfully running the Wilcoxon's test. This was almost the case before filtering out the outliers, as the graphs suggest. We can hope that after the cleanup has been performed, the data finally meets this requirement.
+
+The relevant variables that are present in the dataset are:
+
+ * text: includes a full version of the text for each of the entries.
+ * mean_ul: mean utterance length, calculated in the fashion described above
+ * mean_sl: mean sentence length,
+ * inf_gender1: the gender of the speaker
+ * sob_gender1: the gender of the first interviewer
+ * sob_gender2: the gender of the second interviewer (if present, "" if absent)
+ * sob_gender3 &
+ * sob_gender4: genders of the third and the fourth interviewer
+
+The four latter parameters allow us to separate the entries in several groups depending on the gender of the speakers. Thus, we can compare the cases, in which the speaker has a conversation either with a single interviewer of a certain gender or with a team of interviewers, that can be either diverse or uniform in terms of gender. This aspect of the situation can possibly influence the speaker, determining, whether they wish to share their knowledge. For instance, it was noted by the specialists that informers are much more eager to share their knowledge about magic and other forbidden subjects with the interviewers that they perceive as equal to themselves.
+
+### Experiments
+After the requirements have been accounted for, we can proceed to the comparison of groups.
+First of all, we are going to compare speaker genders overall, without making any further distinctions.
+
+```{r echo=FALSE}
+dataset %>% 
+  ggplot(aes(x = inf_gender1, y = mean_ul, fill = inf_gender1)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = TRUE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  labs(title = "MUL for gender groups", y = "Mean utterance len.") + 
+  theme_economist(base_size = 55) + 
+  theme(axis.text.x = element_text(vjust = 6),
+        axis.text.y = element_text(hjust = 2)) +
+  scale_color_economist() -> p1
+
+dataset %>% 
+  ggplot(aes(x = inf_gender1, y = mean_sl, fill = inf_gender1)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = TRUE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  labs(title = "MSL for gender groups", y = "Mean sent. len.") + 
+  theme_economist(base_size = 55) + 
+  theme(axis.text.x = element_text(vjust = 6),
+        axis.text.y = element_text(hjust = 2)) + 
+  scale_color_economist() -> p2
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+In both cases the third quartile boundary is higher for the female group, although we may assume that this tendency is due to the unequal sample sizes, as the female group includes more entries. The white points that mark the mean of the distribution suggest that little difference is present, but we are still going to run the corresponding tests. We also calculate the corresponding r-statistic so as to determine the effect size.
+
+#### MUL
+```{r echo=FALSE}
+dataset %>% 
+  wilcox_test(mean_ul ~ inf_gender1) %>% 
+  add_significance()
+
+dataset %>% 
+  wilcox_effsize(mean_ul ~ inf_gender1)
+```
+#### MSL
+```{r echo=FALSE}
+dataset %>% 
+  wilcox_test(mean_sl ~ inf_gender1) %>% 
+  add_significance()
+
+dataset %>% 
+  wilcox_effsize(mean_sl ~ inf_gender1)
+```
+
+Our interpretation of the tests above depends on what alpha we choose for testing the hypotheses. As long as we pick an alpha of 0.001, like M. A. Daniel did in his research, the difference of means in both of the tests has no statistical significance. However, if we choose an alpha of 0.05 that is generally acknowledged as sufficient for the social sciences, the results appear to be significant. Whichever fashion we go for, the r-statistic still implies that the effect size is quite small in both of the tests. This fact allows us to conclude that according to the data that we have, the common assumption that women speak more is not supported statistically. Having determined this conclusion, we can now try to split the groups into smaller fractions, so as to see, if any patterns can be spotted in this manner.
+
+Although we stated at the beginning, that the corpus that we are working with is generally uniform in terms of pragmatics, speakers' perception of the communicative situation can still differ, depending on the number of interviewers they converse with. As long as only one interviewer participates in the dialogue, the situation can possibly be viewed as a private talk, which does not force the informant to change his everyday speaking patterns. Meanwhile a conversation with multiple interviewers (normally from 2 to 4) is more likely to be percieved as a formal situation that requires the informant to make respective adjustments to their manner of speaking. Therefore it would be interesting to compare the corresponding corpus entries. 
+Firstly, we can compare the subgroups determined by the exact number of interviewers.
+
+```{r echo=FALSE}
+dataset %>% 
+  mutate(int.num = as.factor(ifelse(sob_gender4 != "", 4,
+                          ifelse(sob_gender3 != "", 3,
+                                 ifelse(sob_gender2 != "", 2, 1))))) %>% 
+  ggplot(aes(x = int.num, y = mean_ul, fill = int.num)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = FALSE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  labs(title = "All groups", x = "N interviewers", y = "Mean utterance len.") + 
+  theme_economist(base_size = 55) + 
+  theme(axis.text.x = element_text(vjust = 6),
+        axis.text.y = element_text(hjust = 2)) +
+  scale_color_economist() -> p5
+
+dataset %>% 
+  mutate(int.num = as.factor(ifelse(sob_gender4 != "", 4,
+                          ifelse(sob_gender3 != "", 3,
+                                 ifelse(sob_gender2 != "", 2, 1))))) %>% 
+  ggplot(aes(x = int.num, y = mean_sl, fill = int.num)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = FALSE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  labs(title = "All groups", x = "N interviewers", y = "Mean sent. len.") + 
+  theme_economist(base_size = 55) + 
+  theme(axis.text.x = element_text(vjust = 6),
+        axis.text.y = element_text(hjust = 2)) +
+  scale_color_economist() -> p6
+
+grid.arrange(p5, p6, ncol = 2)
+```
+
+Then we may also look at the difference between the formal (>2 interviewers) and the informal subgroups. The sample sizes are 815 for formal and 131 for informal types.
+
+```{r echo=FALSE}
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  group_by(sit.type) %>% 
+  summarise(n = n())
+```
+
+```{r echo=FALSE}
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  ggplot(aes(x = sit.type, y = mean_ul, fill = sit.type)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = TRUE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white") + 
+  theme_economist(base_size = 55) + 
+  theme(axis.text.x = element_text(vjust = 6),
+        axis.text.y = element_text(hjust = 2)) + 
+  scale_color_economist()
+```
+
+What we can see from the graph is that the assumption we made above is presumably false, as the means and the medians of the two distributions are roughly the same. The notches also clearly intersect, which implies the lack of statistically significant differences between the medians. Still, it can also be noted that the whisker ends are different and include higher values in the case of the formal situation type. The other difference is that the plot for the formal type includes many more outliers with high MUL values, although this fact can be explained by the difference of sample sizes.
+However, what would be interesting to test is whether gender-based distinctions exist in the two new groups. Firstly, we will create plots for both the formal and the informal case.
+
+```{r echo=FALSE}
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "informal") %>% 
+  ggplot(aes(x = inf_gender1, y = mean_ul, fill = inf_gender1)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = TRUE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  theme(axis.text.y = element_text(hjust = 2)) + 
+  labs(title = "Informal group", x = "Speaker gender") -> p3
+
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "formal") %>% 
+  ggplot(aes(x = inf_gender1, y = mean_ul, fill = inf_gender1)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = TRUE) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
+  theme(axis.text.y = element_text(hjust = 2)) + 
+  labs(title = "Formal group", x = "Speaker gender") -> p4
+
+grid.arrange(p3, p4, ncol = 2)
+```
+
+The graph for the informal group suggests that no differences are present. The graph for the formal group on the other hand shows that the quartile borders and the whiskers cover a narrower range and find themselves lower in the case of the male speaker group. The notches of the boxes are also differently positioned, which hints at the difference of medians. Running the same comparison tests inside the formal subgroup, we can see, that the significance between speaker genders is more notable in this particular case.
+
+#### MUL
+```{r echo=FALSE}
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "formal") %>%
+  wilcox_test(mean_ul ~ inf_gender1) %>% 
+  add_significance()
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "formal") %>%
+  wilcox_effsize(mean_ul ~ inf_gender1)
+```
+#### MSL
+```{r echo=FALSE}
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "formal") %>%
+  wilcox_test(mean_sl ~ inf_gender1) %>% 
+  add_significance()
+dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
+  filter(sit.type == "formal") %>%
+  wilcox_effsize(mean_sl ~ inf_gender1)
+```
+
+While the difference of the mean utterance lengths still does not have to be taken too seriously, as the p-value shows a high probability of a type-1 error, while the r-statistic value is small, the difference of mean sentence lengths appears to be quite notable.
+If we try to interpret these distinctions in terms of some real-world tendencies, we might suppose that female speakers are more eager to adapt their speaking patterns to the specific communicative situation. It may be either due to differences in the perception of the situation (members of one group view it as responsible, while others do not) or due to some other factor.
+So far the tendencies that we observed were hardly significant, but still informative. Nevertheless, the dataset can be fractured even more, if we take into account the gender of the interviewers.
+At first we can take a look at how the distributions look, when there is only one interviewer.
+
+```{r echo=FALSE}
+data_single <- dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>%
+  filter(sit.type == "informal") %>%
+  mutate(part.genders = ifelse(inf_gender1 == "f",
+                               ifelse(sob_gender1 == "f", "F2F", "F2M"),
+                               ifelse(sob_gender1 == "f", "M2F", "M2M"))) 
+data_single %>% 
+  ggplot(aes(x = part.genders, y = mean_ul, fill = part.genders)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = FALSE) + 
+  labs(title = "Mean utterance length", x = "Participants' genders") +
+  theme(axis.text.y = element_text(hjust = 2)) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white") -> p7
+
+data_single %>% 
+  ggplot(aes(x = part.genders, y = mean_sl, fill = part.genders)) + 
+  stat_boxplot(geom = "errorbar", width = 0.5) +
+  geom_boxplot(notch = FALSE) + 
+  labs(title = "Mean sentence length", x = "Participants' genders") + 
+  theme(axis.text.y = element_text(hjust = 2)) + 
+  stat_summary(fun=mean, geom="point", shape=20, size=6, color="white") -> p8
+
+grid.arrange(p7, p8, ncol = 2)
+```
+
+#### MUL
+```{r echo=FALSE}
+data_single %>% 
+  group_by(part.genders) %>% 
+  summarise(mean_MUL = mean(mean_ul), n = n())
+```
+
+#### MSL
+```{r echo=FALSE}
+data_single %>% 
+  group_by(part.genders) %>% 
+  summarise(mean_MSL = mean(mean_sl), n = n())
+```
+
+Judging by the graphs, we can conclude that no real difference between the means is present, although both the MUL and the MSL seem to be slightly higher, when the interviewer is male. Just to be sure, we may apply an ANOVA with TukeyHSD to check this out. The reason, why we chose TukeyHSD is because this post-hoc test has less requirements than a pairwise t.test.
+
+#### MUL
+```{r echo=FALSE}
+summary(aov_model2 <- aov(mean_ul ~ part.genders, data_single))
+TukeyHSD(aov_model2)
+```
+#### MSL
+```{r echo=FALSE}
+summary(aov_model3 <- aov(mean_sl ~ part.genders, data_single))
+TukeyHSD(aov_model3)
+```
+
+As the reports suggest, the slight difference that exists is of no statistical significance.
+
+We may also look at the situations, in which there are two or more interviewers. For this comparison we introduce a variable that has values "Fonly" and "Monly" if the interviewer group is composed solely of females or males respectively. All other composition types are marked as "Mixed". After combining this value with the gender of the speaker we are left with 6 distinct dialogue types.
+
+```{r include=FALSE}
+grouped <- dataset %>% 
+  filter(sob_gender2 != "") %>% 
+  mutate(is.allF = ifelse(if_all(starts_with("sob"), ~ . %in% c("f","")), "Fonly", "Other")) %>%
+  mutate(is.allM = ifelse(if_all(starts_with("sob"), ~ . %in% c("m","")), "Monly", "Other")) %>% 
+  mutate(group.gender = ifelse(is.allF == "Fonly", "Fonly", ifelse(is.allM == "Monly", "Monly", "Mixed"))) %>% 
+  select(inf_gender1, group.gender, mean_ul, mean_sl) %>% 
+  mutate(inf2group = paste(inf_gender1, group.gender, sep = "2"))
+```
+
+```{r echo=FALSE}
+grouped %>% 
+  ggplot(aes(x = inf2group, y = mean_ul, fill = inf2group)) +
+  stat_boxplot(geom = "errorbar", width = 0.5) + 
+  geom_boxplot(notch = FALSE) + 
+  labs(title = "Mean utterance length") + 
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 6, color = "white")
+```
+
+```{r echo=FALSE}
+grouped %>% 
+  ggplot(aes(x = inf2group, y = mean_sl, fill = inf2group)) +
+  stat_boxplot(geom = "errorbar", width = 0.5) + 
+  geom_boxplot(notch = FALSE) + 
+  labs(title = "Mean sentence length") +
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 6, color = "white")
+```
+
+Although the graphs show no drastic difference between the distributions, the means are obviously not equal, which is why we may compare them using the ANOVA test and utilizing the Tukey Honest Significant differences as a post-hoc comparison.
+
+#### MUL
+```{r echo=FALSE}
+grouped %>% 
+  group_by(inf2group) %>% 
+  summarise(MUL = mean(mean_ul), num = n()) %>% 
+  print()
+```
+```{r echo=FALSE}
+summary(aov_model <- aov(mean_ul ~ inf2group, grouped))
+TukeyHSD(aov_model)
+```
+#### MSL
+```{r echo=FALSE}
+grouped %>% 
+  group_by(inf2group) %>% 
+  summarise(MSL = mean(mean_sl), num = n())
+```
+```{r echo=FALSE}
+summary(aov_model4 <- aov(mean_sl ~ inf2group, grouped))
+TukeyHSD(aov_model4)
+```
+
+Once again, the difference seems to be to small to be considered. Although the ANOVA shows that not all groups have a similar mean MSL, the post-hoc test proves that the differences are not significant. However, we can state that the difference between the female-to-female group and two other groups, namely male-to-female and male-to-male are on the verge of statistical significance. Of course, the latter fact does not allow us to make any strict conclusions.
+
+### Discussion
+
+ * It may seem from the experiments above that we failed to achieve any significant result, as we did not find any notable tendencies. However, the main goal of the study was not to confirm, but to test a common assumption about the communicative behaviour of certain genders. In this sense the experiment can be called a success, as our study, made on a pragmatically uniform corpus, proves that the gender-based differences are not statistically significant.
+ * The study also showed some disadvantages of the corpus, like the lack of an age variable or like the lack of balance in terms of speaker genders. These weak points can potentially be taken into account, when collecting new data.
+ * As for the interviewer team composition in terms of gender, the study shows that the effect that the corresponding variables make is hardly noticeable - at least as far as the mean utterance length and the mean sentence length are concerned. We would need some markup for speaker's age and for the age of the interviewers to study this question in detail.

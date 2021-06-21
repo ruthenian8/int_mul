@@ -3,7 +3,9 @@ library(ggthemes)
 install.packages("rstatix")
 library(rstatix)
 install.packages("coin")
-
+install.packages("tinytex")
+tinytex::install_tinytex()
+library("ggpubr")
 View(dataset)
 dataset %>% 
   ggplot(aes(mean_sl)) +
@@ -63,6 +65,11 @@ dataset %>%
   filter(sit.type == "informal") %>% 
   wilcox_test(mean_ul ~ inf_gender1) %>% 
   add_significance()
+
+dataset <- dataset %>% 
+  mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal"))
+
+
 
 dataset %>% 
   mutate(sit.type = ifelse(sob_gender2 == "", "informal", "formal")) %>% 
@@ -165,6 +172,63 @@ formal <- dataset %>%
   filter(sit.type == "formal") %>% 
   mutate(isMixed = ifelse(sob_gender1 != sob_gender2, "Mixed", ifelse(sob_gender1 == "f", "allFemale", "allMale")))
 
+ggline(formal, x = "isMixed", y = "mean_sl", color = "inf_gender1",
+       add = c("mean_se"),
+       palette = c("#00AFBB", "#E7B800"))
+
+dataset %>% 
+  filter(sob_gender2 != "") %>% 
+  mutate(is.allF = ifelse(if_all(starts_with("sob"), ~ . %in% c("f","")), "Fonly", "Other")) %>%
+  mutate(is.allM = ifelse(if_all(starts_with("sob"), ~ . %in% c("m","")), "Monly", "Other")) %>% 
+  mutate(group.gender = ifelse(is.allF == "Fonly", "Fonly", ifelse(is.allM == "Monly", "Monly", "Mixed"))) %>% 
+  select(inf_gender1, group.gender, mean_ul, mean_sl) %>% 
+  filter(inf_gender1 == "f") %>% 
+  ggplot(aes(x = group.gender, y = mean_ul, fill = group.gender)) +
+  stat_boxplot(geom = "errorbar", width = 0.5) + 
+  geom_boxplot(notch = FALSE) + 
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 6, color = "white")
+
+dataset %>% 
+  filter(sob_gender2 != "") %>% 
+  mutate(is.allF = ifelse(if_all(starts_with("sob"), ~ . %in% c("f","")), "Fonly", "Other")) %>%
+  mutate(is.allM = ifelse(if_all(starts_with("sob"), ~ . %in% c("m","")), "Monly", "Other")) %>% 
+  mutate(group.gender = ifelse(is.allF == "Fonly", "Fonly", ifelse(is.allM == "Monly", "Monly", "Mixed"))) %>% 
+  select(inf_gender1, group.gender, mean_ul, mean_sl) %>% 
+  filter(inf_gender1 == "m") %>% 
+  ggplot(aes(x = group.gender, y = mean_ul, fill = group.gender)) +
+  stat_boxplot(geom = "errorbar", width = 0.5) + 
+  geom_boxplot(notch = FALSE) + 
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 6, color = "white")
+
+dataset %>% 
+  filter(sob_gender2 != "") %>% 
+  mutate(is.allF = ifelse(if_all(starts_with("sob"), ~ . %in% c("f","")), "Fonly", "Other")) %>%
+  mutate(is.allM = ifelse(if_all(starts_with("sob"), ~ . %in% c("m","")), "Monly", "Other")) %>% 
+  mutate(group.gender = ifelse(is.allF == "Fonly", "Fonly", ifelse(is.allM == "Monly", "Monly", "Mixed"))) %>% 
+  select(inf_gender1, group.gender, mean_ul, mean_sl) %>% 
+  mutate(inf2group = paste(inf_gender1, group.gender, sep = "2")) %>% 
+  ggplot(aes(x = inf2group, y = mean_sl, fill = inf2group)) +
+  stat_boxplot(geom = "errorbar", width = 0.5) + 
+  geom_boxplot(notch = FALSE) + 
+  stat_summary(fun = mean, geom = "point", shape = 20, size = 6, color = "white")
+
+grouped <- dataset %>% 
+  filter(sob_gender2 != "") %>% 
+  mutate(is.allF = ifelse(if_all(starts_with("sob"), ~ . %in% c("f","")), "Fonly", "Other")) %>%
+  mutate(is.allM = ifelse(if_all(starts_with("sob"), ~ . %in% c("m","")), "Monly", "Other")) %>% 
+  mutate(group.gender = ifelse(is.allF == "Fonly", "Fonly", ifelse(is.allM == "Monly", "Monly", "Mixed"))) %>% 
+  select(inf_gender1, group.gender, mean_ul, mean_sl) %>% 
+  mutate(inf2group = paste(inf_gender1, group.gender, sep = "2"))
+
+summary(aov_model <- aov(mean_ul ~ inf2group, grouped))
+TukeyHSD(aov_model)
+pairwise.t.test(grouped$mean_ul, grouped$inf2group, p.adjust.method = "BH")
+
+?TukeyHSD
+dataset %>% 
+  filter(sob_gender1 == "m" & sob_gender2 == "m" & sob_gender3 == "") %>% 
+  summarise(n = n())
+
 formal %>% 
   filter(inf_gender1 == "m") %>% 
   ggplot(aes(x = isMixed, y = mean_ul, fill = isMixed)) +
@@ -225,7 +289,11 @@ dataset %>%
   geom_boxplot(notch = FALSE) + 
   stat_summary(fun=mean, geom="point", shape=20, size=6, color="white")+
   labs(title = "All groups", x = "N interviewers", y = "Mean sent. len.") + 
-  theme_economist(base_size = 55) + 
+  theme_economist(base_size = 55) +
+  theme(axis.text.x = element_text(vjust = 5),
+        axis.text.y = element_text(hjust = 2),
+        axis.title.x.bottom = element_text(margin = margin(0, 10, 0, 0)),
+        axis.title.y.left = element_text(margin = margin(3, 0, 0, 0))) + 
   scale_color_economist()
 ##############################
 dataset %>% 
@@ -287,6 +355,6 @@ dataset %>%
                                ifelse(sob_gender1 == "f", "F2F", "F2M"),
                                ifelse(sob_gender1 == "f", "M2F", "M2M"))) %>% 
   group_by(part.genders) %>% 
-  summarise(mean(mean_sl))
+  summarise(mean_MSL = mean(mean_sl), n = n())
 
 all(c(1, 2, 3, 4) > 0)
